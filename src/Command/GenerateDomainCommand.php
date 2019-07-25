@@ -26,14 +26,15 @@ use Symfony\Component\Console\Logger\ConsoleLogger;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Yaml\Parser;
 
+use ApiPlatform\SchemaGenerator\DomainGenerator\Configuration as DomainConfiguration;
+use ApiPlatform\SchemaGenerator\DomainGenerator\ClassGenerator;
+
 /**
- * Generate entities command.
- *
- * @author Kévin Dunglas <dunglas@gmail.com>
+ * Generate domain command.
  */
-final class GenerateTypesCommand extends Command
+final class GenerateDomainCommand extends Command
 {
-    private const DEFAULT_CONFIG_FILE = 'schema.yaml';
+    private const DEFAULT_CONFIG_FILE = 'domain.yaml';
 
     private $namespacePrefix;
     private $defaultOutput;
@@ -58,8 +59,8 @@ final class GenerateTypesCommand extends Command
         }
 
         $this
-            ->setName('generate-types')
-            ->setDescription('Generate types')
+            ->setName('generate-domain')
+            ->setDescription('Generate domain')
             ->addArgument('output', $this->defaultOutput ? InputArgument::OPTIONAL : InputArgument::REQUIRED, 'The output directory', $this->defaultOutput)
             ->addArgument('config', InputArgument::OPTIONAL, 'The config file to use (default to "schema.yaml" in the current directory, will generate all types if no config file exists)');
     }
@@ -70,8 +71,64 @@ final class GenerateTypesCommand extends Command
     protected function execute(InputInterface $input, OutputInterface $output): void
     {
         $defaultOutput = $this->defaultOutput ? realpath($this->defaultOutput) : null;
+        $outputDir = $this->parseOutputDir($input, $defaultOutput);
+        $config = $this->parseConfig($input);
+
+        $processor = new Processor();
+        $configuration = new DomainConfiguration($this->namespacePrefix);
+        $processedConfiguration = $processor->processConfiguration($configuration, [$config]);
+        $processedConfiguration['output'] = $outputDir;
+        if (!$processedConfiguration['output']) {
+            throw new \RuntimeException('The specified output is invalid');
+        }
+
+        $graphs = $this->loadGraphs($processedConfiguration);
+
+        //$relations = [];
+        //foreach ($processedConfiguration['relations'] as $relation) {
+        //    $relations[] = new \SimpleXMLElement($relation, 0, true);
+        //}
+
+        //$goodRelationsBridge = new GoodRelationsBridge($relations);
+        //$cardinalitiesExtractor = new CardinalitiesExtractor($graphs, $goodRelationsBridge);
+
+        $logger = new ConsoleLogger($output);
+
+        $domainGeneratorClass = $processedConfiguration['domainGenerator'];
+        $logger->debug('Domain generator: ' . $domainGeneratorClass);
+        $domainGenerator = new $domainGeneratorClass(
+            $logger, 
+            new ClassGenerator()
+        );
+        $domainGenerator
+            ->configure($processedConfiguration)
+            ->loadGraphs($graphs)
+            ->generate();
+    }
+
+    /**
+     * @param array $processedConfiguration
+     * @return \EasyRdf_Graph[]
+     */
+    private function loadGraphs($processedConfiguration): array
+    {
+        $graphs = [];
+        foreach ($processedConfiguration['owl'] as $ref) {
+            $graph = new \EasyRdf_Graph();
+            if ('http://' === substr($ref['uri'], 0, 7) || 'https://' === substr($ref['uri'], 0, 8)) {
+                $graph->load($ref['uri'], $ref['format']);
+            } else {
+                $graph->parseFile($ref['uri'], $ref['format']);
+            }
+
+            $graphs[] = $graph;
+        }
+        return $graphs;
+    }
+
+    private function parseOutputDir($input, $defaultOutput): string
+    {
         $outputDir = $input->getArgument('output');
-        $configArgument = $input->getArgument('config');
 
         if ($dir = realpath($input->getArgument('output'))) {
             if (!is_dir($dir)) {
@@ -93,6 +150,13 @@ final class GenerateTypesCommand extends Command
         } else {
             $outputDir = realpath($outputDir);
         }
+
+        return $outputDir;
+    }
+
+    private function parseConfig($input): array
+    {
+        $configArgument = $input->getArgument('config');
 
         if ($configArgument) {
             if (!file_exists($configArgument)) {
@@ -118,52 +182,6 @@ final class GenerateTypesCommand extends Command
             $config = [];
         }
 
-        $processor = new Processor();
-        $configuration = new TypesGeneratorConfiguration($dir === $defaultOutput ? $this->namespacePrefix : null);
-        $processedConfiguration = $processor->processConfiguration($configuration, [$config]);
-        $processedConfiguration['output'] = $outputDir;
-        if (!$processedConfiguration['output']) {
-            throw new \RuntimeException('The specified output is invalid');
-        }
-
-        $graphs = [];
-        foreach ($processedConfiguration['rdfa'] as $rdfa) {
-            $graph = new \EasyRdf_Graph();
-            if ('http://' === substr($rdfa['uri'], 0, 7) || 'https://' === substr($rdfa['uri'], 0, 8)) {
-                $graph->load($rdfa['uri'], $rdfa['format']);
-            } else {
-                $graph->parseFile($rdfa['uri'], $rdfa['format']);
-            }
-
-            $graphs[] = $graph;
-        }
-
-        $relations = [];
-        foreach ($processedConfiguration['relations'] as $relation) {
-            $relations[] = new \SimpleXMLElement($relation, 0, true);
-        }
-
-        $goodRelationsBridge = new GoodRelationsBridge($relations);
-        $cardinalitiesExtractor = new CardinalitiesExtractor($graphs, $goodRelationsBridge);
-
-        $templatePaths = $processedConfiguration['generatorTemplates'];
-        $templatePaths[] = __DIR__.'/../../templates/';
-
-        $loader = new \Twig_Loader_Filesystem($templatePaths);
-        $twig = new \Twig_Environment($loader, ['autoescape' => false, 'debug' => $processedConfiguration['debug']]);
-        $twig->addFilter(new \Twig_SimpleFilter('ucfirst', 'ucfirst'));
-        $twig->addFilter(new \Twig_SimpleFilter('pluralize', [Inflector::class, 'pluralize']));
-        $twig->addFilter(new \Twig_SimpleFilter('singularize', [Inflector::class, 'singularize']));
-
-        if ($processedConfiguration['debug']) {
-            $twig->addExtension(new \Twig_Extension_Debug());
-        }
-
-        $logger = new ConsoleLogger($output);
-
-        $typesGeneratorClass = $processedConfiguration['typesGenerator'];
-        $entitiesGenerator = new $typesGeneratorClass($twig, $logger, $graphs, $cardinalitiesExtractor, $goodRelationsBridge);
-        //$entitiesGenerator = new TypesGenerator($twig, $logger, $graphs, $cardinalitiesExtractor, $goodRelationsBridge);
-        $entitiesGenerator->generate($processedConfiguration);
+        return $config;
     }
 }

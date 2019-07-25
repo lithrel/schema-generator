@@ -1,32 +1,20 @@
 <?php
 
-/*
- * This file is part of the API Platform project.
- *
- * (c) Kévin Dunglas <dunglas@gmail.com>
- *
- * For the full copyright and license information, please view the LICENSE
- * file that was distributed with this source code.
- */
-
 declare(strict_types=1);
 
-namespace ApiPlatform\SchemaGenerator;
+namespace ApiPlatform\SchemaGenerator\DomainGenerator;
+
+use Symfony\Component\Config\Definition\ConfigurationInterface;
+use Symfony\Component\Config\Definition\Builder\TreeBuilder;
 
 use ApiPlatform\SchemaGenerator\AnnotationGenerator\ApiPlatformCoreAnnotationGenerator;
 use ApiPlatform\SchemaGenerator\AnnotationGenerator\ConstraintAnnotationGenerator;
 use ApiPlatform\SchemaGenerator\AnnotationGenerator\DoctrineOrmAnnotationGenerator;
 use ApiPlatform\SchemaGenerator\AnnotationGenerator\PhpDocAnnotationGenerator;
 use ApiPlatform\SchemaGenerator\AnnotationGenerator\SerializerGroupsAnnotationGenerator;
-use Symfony\Component\Config\Definition\Builder\TreeBuilder;
-use Symfony\Component\Config\Definition\ConfigurationInterface;
+use ApiPlatform\SchemaGenerator\CardinalitiesExtractor;
 
-/**
- * Types Generator Configuration.
- *
- * @author Kévin Dunglas <dunglas@gmail.com>
- */
-final class TypesGeneratorConfiguration implements ConfigurationInterface
+class Configuration implements ConfigurationInterface
 {
     /**
      * @see https://schema.org/docs/schema_org_rdfa.html
@@ -57,15 +45,14 @@ final class TypesGeneratorConfiguration implements ConfigurationInterface
         $rootNode = $treeBuilder->root('config');
         $rootNode
             ->children()
-                ->arrayNode('rdfa')
-                    ->info('RDFa files')
-                    ->defaultValue([['uri' => self::SCHEMA_ORG_RDFA_URL, 'format' => 'rdfa']])
+                ->arrayNode('owl')
+                    ->info('OWL files')
                     ->beforeNormalization()
                         ->ifArray()
                         ->then(function (array $v) {
                             return array_map(
-                                function ($rdfa) {
-                                    return is_scalar($rdfa) ? ['uri' => $rdfa, 'format' => null] : $rdfa;
+                                function ($owl) {
+                                    return is_scalar($owl) ? ['uri' => $owl, 'format' => null] : $owl;
                                 },
                                 $v
                             );
@@ -85,17 +72,6 @@ final class TypesGeneratorConfiguration implements ConfigurationInterface
                     ->prototype('scalar')->end()
                 ->end()
                 ->booleanNode('debug')->defaultFalse()->info('Debug mode')->end()
-                ->arrayNode('id')
-                    ->addDefaultsIfNotSet()
-                    ->info('IDs configuration')
-                    ->children()
-                        ->booleanNode('generate')->defaultTrue()->info('Automatically add an id field to entities')->end()
-                        ->enumNode('generationStrategy')->defaultValue('auto')->values(['auto', 'none', 'uuid', 'mongoid'])->info('The ID generation strategy to use ("none" to not let the database generate IDs).')->end()
-                        ->booleanNode('writable')->defaultFalse()->info('Is the ID writable? Only applicable if "generationStrategy" is "uuid".')->end()
-                    ->end()
-                ->end()
-                ->booleanNode('useInterface')->defaultFalse()->info('Generate interfaces and use Doctrine\'s Resolve Target Entity feature')->end()
-                ->booleanNode('checkIsGoodRelations')->defaultFalse()->info('Emit a warning if a property is not derived from GoodRelations')->end()
                 ->scalarNode('header')->defaultFalse()->info('A license or any text to use as header of generated files')->example('// (c) Kévin Dunglas <dunglas@gmail.com>')->end()
                 ->arrayNode('namespaces')
                     ->addDefaultsIfNotSet()
@@ -104,15 +80,6 @@ final class TypesGeneratorConfiguration implements ConfigurationInterface
                         ->scalarNode('prefix')->defaultValue($this->defaultPrefix)->info('The global namespace\'s prefix')->example('App\\')->end()
                         ->scalarNode('entity')->defaultValue("{$namespacePrefix}Entity")->info('The namespace of the generated entities')->example('App\Entity')->end()
                         ->scalarNode('enum')->defaultValue("{$namespacePrefix}Enum")->info('The namespace of the generated enumerations')->example('App\Enum')->end()
-                        ->scalarNode('interface')->defaultValue("{$namespacePrefix}Model")->info('The namespace of the generated interfaces')->example('App\Model')->end()
-                    ->end()
-                ->end()
-                ->arrayNode('doctrine')
-                    ->addDefaultsIfNotSet()
-                    ->info('Doctrine')
-                    ->children()
-                        ->booleanNode('useCollection')->defaultTrue()->info('Use Doctrine\'s ArrayCollection instead of standard arrays')->end()
-                        ->scalarNode('resolveTargetEntityConfigPath')->defaultNull()->info('The Resolve Target Entity Listener config file pass')->end()
                     ->end()
                 ->end()
                 ->arrayNode('validator')
@@ -200,9 +167,9 @@ final class TypesGeneratorConfiguration implements ConfigurationInterface
                         ->end()
                     ->end()
                 ->end()
-                ->scalarNode('typesGenerator')
-                    ->info('Types generator to use')
-                    ->defaultValue(TypesGenerator::class)
+                ->scalarNode('domainGenerator')
+                    ->info('Domain generator to use')
+                    ->defaultValue(CodeGenerator::class)
                     ->end()
                 ->arrayNode('annotationGenerators')
                     ->info('Annotation generators to use')
@@ -224,3 +191,4 @@ final class TypesGeneratorConfiguration implements ConfigurationInterface
         return $treeBuilder;
     }
 }
+    

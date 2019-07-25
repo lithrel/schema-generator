@@ -1,0 +1,6 @@
+# api/config/as2.yaml
+# ActivityStreams
+debug: true
+
+owl:
+  - ./data/activitystreams-owl
