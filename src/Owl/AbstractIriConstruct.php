@@ -7,7 +7,7 @@ namespace ApiPlatform\SchemaGenerator\Owl;
 /**
  * 
  */
-class AbstractIriConstruct
+class AbstractIriConstruct implements Interfaces\WithIriInterface
 {
     /**
      * @var string

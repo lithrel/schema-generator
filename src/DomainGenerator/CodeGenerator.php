@@ -7,6 +7,8 @@ namespace ApiPlatform\SchemaGenerator\DomainGenerator;
 use Psr\Log\LoggerInterface;
 use ApiPlatform\SchemaGenerator\DomainGenerator\CodeConfiguration\ClassConfiguration;
 use ApiPlatform\SchemaGenerator\DomainGenerator\CodeConfiguration\PropertyConfiguration;
+use ApiPlatform\SchemaGenerator\Owl;
+use ApiPlatform\SchemaGenerator\Owl\Registry;
 use ApiPlatform\SchemaGenerator\Owl\DataRange;
 use ApiPlatform\SchemaGenerator\Owl\EasyRdfToOwl;
 
@@ -72,10 +74,11 @@ class CodeGenerator
     public function generate(): void
     {
         $owl = (new EasyRdfToOwl($this->logger))
-            ->convertGraph($this->graphs[0]);
+            ->convert($this->graphs[0], new Owl(new Registry()));
 
-        var_dump(array_keys($owl->registry()->domains()));
-        var_dump(array_keys($owl->registry()->ranges()));
-        var_dump(array_keys($owl->registry()->classes()));
+        var_dump(array_map(
+            function ($stuff) { return $stuff->properties(); },
+            $owl->registry()->classes(),
+        ));
     }
 }

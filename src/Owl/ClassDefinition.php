@@ -22,7 +22,7 @@ class ClassDefinition extends AbstractIriConstruct
     private $comment;
 
     /**
-     * @var
+     * @var ?
      */
     private $subClassOf;
 
@@ -52,5 +52,25 @@ class ClassDefinition extends AbstractIriConstruct
     public function addProperty($property)
     {
         $this->properties[] = $property;
+    }
+
+    public function label(): string
+    {
+        return $this->label();
+    }
+
+    public function comment(): ?string
+    {
+        return $this->comment();
+    }
+
+    public function properties(): array
+    {
+        return $this->properties;
+    }
+
+    public function parent()
+    {
+        return $this->subClassOf;
     }
 }

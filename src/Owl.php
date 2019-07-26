@@ -7,62 +7,58 @@ namespace ApiPlatform\SchemaGenerator;
 
 use ApiPlatform\SchemaGenerator\Owl\ClassDefinition; 
 use ApiPlatform\SchemaGenerator\Owl\Datatype;
-use ApiPlatform\SchemaGenerator\Owl\Registry;
-use Psr\Log\LoggerInterface;
+use ApiPlatform\SchemaGenerator\Owl\Interfaces\RegistryInterface;
+use ApiPlatform\SchemaGenerator\Owl\Interfaces\WithIriInterface;
 
 /**
  *
  */
 class Owl
 {
+    /**
+     * @var RegistryInterface
+     */
     private $registry;
 
-    public function __construct(Registry $registry)
+    /**
+     * @param RegistryInterface $registry
+     */
+    public function __construct(RegistryInterface $registry)
     {
         $this->registry = $registry;
     }
 
-    public function registry()
+    /**
+     * @return RegistryInterface
+     */
+    public function registry(): RegistryInterface
     {
         return $this->registry;
     }
 
+    /**
+     * @param string $iri
+     * @return boolean
+     */
     public function hasClass(string $iri): bool
     {
-        return isset($this->registry()->classes[$iri]);
+        return isset($this->registry()->classes()[$iri]);
     }
 
-    public function getClass(string $iri): ClassDefinition
+    /**
+     * @param string $iri
+     * @return ?ClassDefinition
+     */
+    public function getClass(string $iri): ?ClassDefinition
     {
-        return $this->registry()->classes[$iri];
+        return $this->registry()->classes()[$iri];
     }
 
-    //
-    // Register
-    //
-
-    public function registerClass(ClassDefinition $class)
+    /**
+     * @param WithIriInterface $object
+     */
+    public function register(WithIriInterface $object): void
     {
-        $this->registry()->addClass($class);
-    }
-
-    public function registerObjectProperty($objectProperty)
-    {
-        $this->registry()->addObjectProperty($objectProperty);
-    }
-
-    public function registerDatatypeProperty($datatypeProperty)
-    {
-        $this->registry()->addDatatypeProperty($datatypeProperty);
-    }
-
-    public function registerRange($range)
-    {
-        $this->registry()->addRange($range);
-    }
-
-    public function registerDomain($domain)
-    {
-        $this->registry()->addDomain($domain);
+        $this->registry()->add($object);
     }
 }
