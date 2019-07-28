@@ -11,21 +11,28 @@ class PropertyConfiguration
         VISIBILITY_PROTECTED = 'protected',
         VISIBILITY_PRIVATE = 'private';
 
-        public $uri;
+    public $uri;
 
-        /** @var ?string */
-        public $name;
-    
-        /** @var string[] */
-        public $implements = [];
+    /** @var ?string */
+    public $name;
 
-        /** @var bool */
-        public $static = false;
+    /** @var string[] */
+    public $implements = [];
 
-        /** @var ?Method */
-        // Implements X or Y
-        // between x and y
-        public $validationMethod;
+    /** @var bool */
+    public $static = false;
 
-        public $comments = [];
+    /** @var ?Method */
+    // Implements X or Y
+    // between x and y
+    public $validationMethod;
+
+    public $comments = [];
+
+    public function __construct(array $params)
+    {
+        foreach ($params as $key => $val) {
+            $this->$key = $val;
+        }
+    }
 }

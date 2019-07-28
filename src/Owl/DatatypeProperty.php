@@ -54,6 +54,16 @@ class DatatypeProperty extends AbstractIriConstruct
         $this->range = $range;
     }
 
+    public function label(): string
+    {
+        return $this->label;
+    }
+
+    public function comment(): ?string
+    {
+        return $this->comment;
+    }
+
     public function setRange($range): self
     {
         $this->range = $range;

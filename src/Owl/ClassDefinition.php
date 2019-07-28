@@ -56,12 +56,12 @@ class ClassDefinition extends AbstractIriConstruct
 
     public function label(): string
     {
-        return $this->label();
+        return $this->label;
     }
 
     public function comment(): ?string
     {
-        return $this->comment();
+        return $this->comment;
     }
 
     public function properties(): array

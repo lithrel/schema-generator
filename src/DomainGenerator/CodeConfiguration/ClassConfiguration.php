@@ -51,4 +51,11 @@ class ClassConfiguration
     
     /** @var string[] name => Method */
     public $methods = [];
+
+    public function __construct(array $params)
+    {
+        foreach ($params as $key => $val) {
+            $this->$key = $val;
+        }
+    }
 }

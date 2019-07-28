@@ -69,16 +69,43 @@ class CodeGenerator
     }
 
     /**
-     * 
+     * @todo : make Collection with ArrayAccess/Iterator
      */
     public function generate(): void
     {
         $owl = (new EasyRdfToOwl($this->logger))
             ->convert($this->graphs[0], new Owl(new Registry()));
 
-        var_dump(array_map(
-            function ($stuff) { return $stuff->properties(); },
-            $owl->registry()->classes(),
-        ));
+        $namespace = 'lithrel\\ActivityStreams';
+        $registry = $owl->registry();
+        $classes = $registry->classes();
+
+        $generator = new ClassGenerator();
+        foreach ($classes as $class) {
+            $parent = $class->parent();
+            $hasParent = $parent
+                && method_exists($parent, 'iri')
+                && $registry->has($parent->iri());
+
+            $conf = new ClassConfiguration([
+                'namespace' => $namespace,
+                'name' => $class->label(),
+                'extends' => $hasParent
+                    ? [$namespace . '\\' . $registry->get($parent->iri())->label()]
+                    : [],
+                'properties' => array_map(
+                    function ($prop) use ($registry) {
+                        $def = $registry->get($prop);
+                        return new PropertyConfiguration([
+                            'name' => $def->label(),
+                            'comments' => $def->comment(),
+                        ]);
+                    },
+                    $class->properties()
+                ),
+            ]);
+
+            $generator->generate($conf);
+        }
     }
 }
